@@ -133,8 +133,15 @@ public class AddressBook {
     private static final String COMMAND_EXIT_DESC = "Exits the program.";
     private static final String COMMAND_EXIT_EXAMPLE = COMMAND_EXIT_WORD;
 
-    private static final String DIVIDER = "===================================================";
+    private static final String COMMAND_EDIT_WORD = "edit";
+    private static final String COMMAND_EDIT_DESC = "Edits a person identified by the index number used in "
+                                                    + "the last find/list call.";
+    private static final String COMMAND_EDIT_PARAMETERS = "INDEX"
+                                                          + PERSON_DATA_PREFIX_PHONE + "PHONE_NUMBER "
+                                                          + PERSON_DATA_PREFIX_EMAIL + "EMAIL";
+    private static final String COMMAND_EDIT_EXAMPLE = COMMAND_ADD_WORD + " 1 p/98765432 e/johnd@gmail.com";
 
+    private static final String DIVIDER = "===================================================";
 
     /* We use a String array to store details of a single person.
      * The constants given below are the indexes for the different data elements of a person
@@ -383,6 +390,8 @@ public class AddressBook {
             return getUsageInfoForAllCommands();
         case COMMAND_EXIT_WORD:
             executeExitProgramRequest();
+        case COMMAND_EDIT_WORD:
+            return executeEditPerson(commandArgs);
         default:
             return getMessageForInvalidCommandInput(commandType, getUsageInfoForAllCommands());
         }
@@ -528,6 +537,22 @@ public class AddressBook {
     }
 
     /**
+     * Checks validity of delete person argument string's format.
+     *
+     * @param rawArgs raw command args string for the delete person command
+     * @return whether the input args string is valid
+     */
+    private static boolean isEditArgsValid(String rawArgs) {
+
+        try {
+            final int extractedIndex = Integer.parseInt(rawArgs.trim().split(" ")[0]); // use standard libraries to parse
+            return extractedIndex >= DISPLAYED_INDEX_OFFSET;
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+    }
+
+    /**
      * Extracts the target's index from the raw delete person args string
      *
      * @param rawArgs raw command args string for the delete person command
@@ -584,6 +609,44 @@ public class AddressBook {
      */
     private static void executeExitProgramRequest() {
         exitProgram();
+    }
+
+    /**
+     * Requests to edit a person's entry in the address book
+     *
+     * @return feedback display message for the operation result
+     */
+    private static String executeEditPerson(String commandArgs) {
+
+        // Extracts the index of the person
+        final String[] args = commandArgs.trim().split(" ");
+        if (!isEditArgsValid(commandArgs)) {
+            return getMessageForInvalidCommandInput(COMMAND_EDIT_WORD, getUsageInfoForEditCommand());
+        }
+
+        // Checks that the person exists in the list
+        final int targetVisibleIndex = Integer.parseInt(args[0]);
+        if (!isDisplayIndexValidForLastPersonListingView(targetVisibleIndex)) {
+            return MESSAGE_INVALID_PERSON_DISPLAYED_INDEX;
+        }
+
+        // Store the persons information from the address book initially
+        final String[] targetInModel = getPersonByLastVisibleIndex(targetVisibleIndex);
+
+        // Deletes the persons entry
+        deletePersonFromAddressBook(targetInModel);
+
+        // Recreates new command to add person
+        final String oldName = targetInModel[0];
+        final String newPhoneNumber = args[1];
+        final String newEmail = args[2];
+        final String newArgs = oldName + ' ' +  newPhoneNumber + ' ' + newEmail;
+
+        // Add the person to the address book again
+        final Optional<String[]> decodeResult = decodePersonFromString(newArgs);
+        final String[] personToAdd = decodeResult.get();
+        addPersonToAddressBook(personToAdd);
+        return getMessageForSuccessfulAddPerson(personToAdd);
     }
 
     /*
@@ -1102,6 +1165,7 @@ public class AddressBook {
     private static String getUsageInfoForFindCommand() {
         return String.format(MESSAGE_COMMAND_HELP, COMMAND_FIND_WORD, COMMAND_FIND_DESC) + LS
                 + String.format(MESSAGE_COMMAND_HELP_PARAMETERS, COMMAND_FIND_PARAMETERS) + LS
+
                 + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_FIND_EXAMPLE) + LS;
     }
 
@@ -1134,6 +1198,13 @@ public class AddressBook {
     private static String getUsageInfoForExitCommand() {
         return String.format(MESSAGE_COMMAND_HELP, COMMAND_EXIT_WORD, COMMAND_EXIT_DESC)
                 + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_EXIT_EXAMPLE);
+    }
+
+    /** Returns the string for showing 'add' command usage instruction */
+    private static String getUsageInfoForEditCommand() {
+        return String.format(MESSAGE_COMMAND_HELP, COMMAND_EDIT_WORD, COMMAND_EDIT_DESC) + LS
+                + String.format(MESSAGE_COMMAND_HELP_PARAMETERS, COMMAND_EDIT_PARAMETERS) + LS
+                + String.format(MESSAGE_COMMAND_HELP_EXAMPLE, COMMAND_EDIT_EXAMPLE) + LS;
     }
 
 
